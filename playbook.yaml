@@ -1,0 +1,73 @@
+# Validating the Servers to make sure they Up and OPENED
+---
+  - name: Validating if the WebServers is UP and OPENED the PORT
+    tags: pmvalidate1
+    wait_for:
+        host: "{{inventory_hostname}}"
+        port: "{{webserver_port}}"
+        delay: 10
+        timeout: 300
+        state: started
+        msg: "WebServer PORT is not Listening"
+    when: ansible_hostname == "{{inventory_hostname}}"
+    register: pmvalidate1
+    ignore_errors: true
+#Modify the playbook to enable the port to close
+
+  - name: Validating if the WebServer port is closed.
+    tags: pmvalidate1
+    wait_for:
+        host: "{{inventory_hostname}}"
+        port: "{{webserver_port}}"
+        delay: 10
+        timeout: 300
+        state: stopped
+        msg: "WebServer PORT is not yet stopped"
+    when: ansible_hostname == "{{inventory_hostname}}"
+    register: pmvalidate1
+    ignore_errors: true
+
+# Waiting for the port to drain out
+  -  name: Validating if the port is drained
+     tags: portvalidate
+     wait_for:
+        host: "{{inventory_hostname}}"
+        port: "{{webserver_port}}"
+        delay: 10
+        timeout: 30
+        state: drained
+
+#Validating to make sure that log files are present in the corresponding direstory
+  - name: Making sure that the Log file is present in the corresponding directory
+    tags: filepresensevalidation
+    register: filepresensevalidation
+    wait_for:
+    path:  "{{logfile}}"
+    delay: 10
+    timeout: 300
+    state: present
+    msg: "Specified LOG FILE is not present"
+    when: ansible_hostname == "{{groups['app'][0]}}" and adminlogfile is defined
+    ignore_errors: true
+
+# Deleting lock file
+  - name: Making sure that the lock file is not present (or) removed
+    wait_for:
+    path:  "{{lockfile}}"
+    delay: 10
+    timeout: 300
+    state: absent
+    msg: "Specified LOCK FILE is still present"
+
+# Pausing or Sleeping Playbook
+
+---
+  - name: Sleep Playbook
+    hosts: app
+    gather_facts: no
+    tasks:
+       -  name: Sleep for 60 seconds and timeout
+          tags: sleep60
+          wait_for:
+            delay: 60
+            timeout: 0
